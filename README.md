@@ -1,2 +1,2 @@
-# Beizhou-After-Sales-Manual
-Beizhou After-Sales Manual
+# After-Sales-Manual
+After-Sales Manual

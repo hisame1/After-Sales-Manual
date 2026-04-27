@@ -65,6 +65,38 @@
             cursor: not-allowed;
         }
 
+        /* --- Feedback Button --- */
+        .feedback-btn {
+            position: fixed;
+            top: 20px;
+            right: 160px;
+            background: #4a9eff;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .feedback-btn:hover {
+            background: #3a8eef;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+
+        .feedback-btn:active {
+            transform: translateY(0);
+        }
+
         /* --- Sidebar --- */
         .sidebar {
             width: var(--sidebar-width);
@@ -694,6 +726,12 @@
                 padding: 8px 15px;
                 font-size: 12px;
             }
+            .feedback-btn {
+                top: 50px;
+                right: 10px;
+                padding: 8px 15px;
+                font-size: 12px;
+            }
         }
 
         /* --- PDF 生成样式 --- */
@@ -703,9 +741,85 @@
         .pdf-mode .download-pdf-btn {
             display: none;
         }
+        .pdf-mode .feedback-btn {
+            display: none;
+        }
         .pdf-mode .main-content {
             margin-left: 0;
             padding: 20px;
+        }
+
+        /* html2pdf 不走 @media print，分页规则需在此直接声明 */
+        .pdf-mode .section {
+            page-break-inside: auto;
+            break-inside: auto;
+            padding-bottom: 20px;
+        }
+        .pdf-mode .section-title,
+        .pdf-mode h1,
+        .pdf-mode h2,
+        .pdf-mode h3 {
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+        .pdf-mode .content-block,
+        .pdf-mode .sw-update-table,
+        .pdf-mode .function-table,
+        .pdf-mode table {
+            page-break-inside: auto;
+            break-inside: auto;
+        }
+        .pdf-mode tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        /* 防止单词在 PDF 分页处被截断 */
+        .pdf-mode p,
+        .pdf-mode li,
+        .pdf-mode td,
+        .pdf-mode th {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            line-height: 2.2;           /* 大幅增大行高，确保切割线落在空白处 */
+        }
+        .pdf-mode p {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            margin-bottom: 12px;        /* 段落间距，提供切割缓冲 */
+        }
+        .pdf-mode li {
+            margin-bottom: 8px;         /* 列表项间距 */
+        }
+        /* 表格单元格允许内容换行 */
+        .pdf-mode .function-table td,
+        .pdf-mode .sw-update-table td,
+        .pdf-mode table td {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            white-space: normal;
+            line-height: 1.6;
+            padding: 12px;              /* 增大单元格内边距 */
+        }
+
+        /* --- PDF 分页控制（浏览器打印备用） --- */
+        @media print {
+            .section {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+            .section-title, h1, h2, h3 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+            .content-block, .sw-update-table, .function-table, table {
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
         }
                 /* 确保有序列表编号显示正确 */
         .content-block ol {
@@ -1334,6 +1448,11 @@
     <button class="download-pdf-btn" onclick="downloadPDF()">
         📄 Download PDF
     </button>
+
+    <!-- Feedback Button -->
+    <a href="feedback-form.html" class="feedback-btn" target="_blank">
+        💬 Feedback
+    </a>
 
     <!-- Settings Tooltip CCB (JS-driven, appended to body) -->
     <div id="tooltip-CCB"></div>
@@ -5699,17 +5818,18 @@
             const date = new Date();
             const fileName = `After-Sales-Manual-${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}.pdf`;
             
+            // 给 body 加 pdf-mode，CSS 会自动隐藏 sidebar 并重置 margin-left
+            document.body.classList.add('pdf-mode');
+
             const opt = {
-                margin:       [10, 10, 10, 10],
+                margin:       [12, 12, 12, 12],  /* 适度边距 */
                 filename:     fileName,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
+                html2canvas:  { scale: 1, useCORS: true, scrollX: 0, scrollY: -window.scrollY },  /* scale 降到 1，行高在像素层面更大 */
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                pagebreak:    { mode: ['avoid-all', 'css'] }
             };
-            
-            document.body.classList.add('pdf-mode');
-            
+
             html2pdf().set(opt).from(content).save().then(() => {
                 document.body.classList.remove('pdf-mode');
                 btn.classList.remove('loading');
